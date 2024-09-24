@@ -31,7 +31,9 @@ The company has shared with you 3 key datasets for this data.
 </summary>
 
 **This data will be primarily used for the processes of collection, transformation, and loading.**
-- [yellow_tripdata_2024.csv](https://github.com)
+
+**The data file is too large to push it to github. Therefore, please press below to download the zip file and extract it to the data folder of the project directory. Otherwise, you can place it anywhere you want.**
+- [yellow_tripdata_2024.csv](https://drive.google.com/file/d/1mT3UTHNjPHGxKTQLuipTNqGLAsXInG9R/view)
 
 | Field                | Description                                                                                                            |
 |----------------------|------------------------------------------------------------------------------------------------------------------------|
