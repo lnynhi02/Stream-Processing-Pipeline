@@ -1,5 +1,5 @@
 # 🚕 New York City Yellow Trip Stream Processing
-This reference architecture shows an **end-to-end real-time analysis pipeline** utilizing ETL(Extract, Transform, Load) processes. The pipeline will ingest data from a source, perform necessary transformations and computations, and load it into storage for future purposes.
+This reference architecture shows an **end-to-end real-time analytics pipeline** utilizing ETL(Extract, Transform, Load) processes. The pipeline will ingest data from a source, perform necessary transformations and computations, and load it into storage for future purposes.
 
 **Scenario**: A taxi company that has collected yellow taxi trip data in New York City. The dataset includes several fields such as total_amount, dropoff_location, pickup_location, and trip_distance. There is also a lookup file containing boroughs and zones based on location_id. To analyze trip trends in real-time, the company aims to calculate the number of trips, average revenue per hour,... and detect abnormal trips as early as possible.
 
@@ -15,9 +15,11 @@ Kafka will be configured using Docker, specifically with docker-compose, to run 
 ### Tools: <img width=2% height=2% src="img/image-4.png" /><img width=2% height=2% src="img/image-5.png" /><img width=2% height=2% src="img/image-6.png" /><img width=2% height=2% src="img/image-7.png" /><img width=2% height=2% src="img/image-8.png" />
 
 ## Achievements
-- Can caculate the average revenue per hour
-- See the difference in trip by borough
-- A dynamic dashboard to see everyday
+- Detects abnormal trip durations (e.g., less than 1 minute, more than 2 hours) and identifies discrepancies between the actual and calculated amounts.
+- Calculated average revenue and trip counts per hour, categorized by payment type and borough.
+- Configures Spark session with optimized parameters, including custom shuffle partitions and broadcast joins for efficient processing.
+- A dynamic dashboard for monitoring and analyzing trends each day.
+- Efficiently writes large-scale processed streaming data to PostgreSQL in near real-time.
 <p align="center">
     <img width=90% height=90% src="dashboard/imgdashboard.png" />
 
@@ -27,6 +29,7 @@ Kafka will be configured using Docker, specifically with docker-compose, to run 
     - [Postgres Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#postgres-setup)
     - [Kafka Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#kafka-streaming)
     - [Spark Setup](#spark-setup)
+* [Summary](#summary)
 
 The sequence to run the script is: `create_table.py` -> `spark_streaming.py` -> `kafka_stream.py`
 
@@ -399,8 +402,10 @@ The first time you run Spark, it will set up the necessary resources, and you'll
 ** **
         python src/kafka_stream.py
 
-Now, you can come to Postgres to see the output tables. Try querying 1 table to see the data.
+Now, you can access PostgreSQL to view the output tables. Try querying one of the tables to see the data.
 
-Thank you very much for following along with me. You can inbox me if you have any questions. Hope you have fun when running the project. Thank you!
+## Summary
+Throughout this guide, we’ve thoroughly examined each component of the pipeline, setting up Kafka for data streaming, from processing data with Spark to storing it in PostgreSQL. The incorporation of Docker simplifies the Kaffka setup.
 
+It's important to note that while this setup is ideal for learning and small-scale projects, scaling it for production use would require additional considerations, particularly regarding security and performance optimization. Future enhancements could include integrating advanced data processing techniques,expanding the pipeline to incorporate more complex data sources.
 
