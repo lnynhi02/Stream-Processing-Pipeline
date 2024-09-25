@@ -194,7 +194,7 @@ I use `config.ini` to access the database configurations, allowing you to modify
     database=enter_your_db
 
 
-### **```Kafka Streaming```**
+### **```Kafka Setup```**
 To avoid resending messages that have already been processed each time we run the streaming task, we define an `index.txt` file that records the number of messages sent in the latest streaming session. We use this number as the starting index for our new streaming task.
 
 For example, if the latest streaming task has sent 1000 messages. This number, 1000, is also used as the starting index for the next streaming task because, although we sent 1000 messages, indexing starts from 0 in CSV file, which means the last message sent is at index 999. 
