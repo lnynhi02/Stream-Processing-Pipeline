@@ -13,7 +13,7 @@ Let's break down the data pipeline process step-by-step:
 Kafka will be configured using Docker, specifically with docker-compose, to run alongside the Kafka UI service, which provides a user interface for easier visualization and monitoring.
 
 <p align="center">
-    <img width=80% height=80% src="img/pipeline1.gif" />
+    <img width=80% height=80% src="img/pipeline.gif" />
 
 ## Achievements
 - Detects abnormal trip durations (e.g., less than 1 minute, more than 2 hours) and identifies discrepancies between the actual and calculated amounts.
