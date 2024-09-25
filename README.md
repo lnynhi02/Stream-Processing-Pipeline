@@ -14,11 +14,21 @@ Kafka will be configured using Docker, specifically with docker-compose, to run 
 
 ### Tools: <img width=2% height=2% src="img/image-4.png" /><img width=2% height=2% src="img/image-5.png" /><img width=2% height=2% src="img/image-6.png" /><img width=2% height=2% src="img/image-7.png" /><img width=2% height=2% src="img/image-8.png" />
 
+## Achievements
+- Can caculate the average revenue per hour
+- See the difference in trip by borough
+- A dynamic dashboard to see everyday
+<p align="center">
+    <img width=90% height=90% src="dashboard/imgdashboard.png" />
 
 ## 📕  Table Of Contents
-* [⚙️ Local Setup](#-local-setup)
-* [💻 Deployment](#-deloyment)
+* [⚙️ Local Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#%EF%B8%8F-local-setup)
+* [💻 Deployment](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#-deployment)
+    - [Postgres Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#postgres-setup)
+    - [Kafka Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#kafka-streaming)
+    - [Spark Setup](#spark-setup)
 
+The sequence to run the script is: `create_table.py` -> `spark_streaming.py` -> `kafka_stream.py`
 
 ## ⚙️ Local Setup
         
@@ -32,7 +42,7 @@ The company has shared with you 3 key datasets for this data.
 
 **This data will be primarily used for the processes of collection, transformation, and loading.**
 
-**The data file is too large to push it to github. Therefore, please press below to download the zip file and extract it to the data folder of the project directory. Otherwise, you can place it anywhere you want.**
+**The data file is too large to push it to github. Therefore, please press below to download the zip file and extract it to the `data/` folder of the project directory. Otherwise, you can place it anywhere you want.**
 - [yellow_tripdata_2024.csv](https://drive.google.com/file/d/1mT3UTHNjPHGxKTQLuipTNqGLAsXInG9R/view)
 
 | Field                | Description                                                                                                            |
@@ -98,7 +108,7 @@ The company has shared with you 3 key datasets for this data.
 
 1. You can clone, fork, or download this GitHub repository on your local machine using the following command:
 ** **
-        git clone https://github.com/LNYN-1508/data-pipeline-project.git
+        git clone https://github.com/LNYN-1508/Data-Pipeline-Project-1.git
 
 **Here is the overall structure of the project:**
 ** ** 
@@ -240,8 +250,9 @@ After the services start, visit the kafka-ui at http://localhost:8800/. Normally
 <p align="center">
   <img width=80% height=80%" src="https://miro.medium.com/v2/resize:fit:1400/format:webp/1*Gqu_lhVxLVrMPvXkiSZpPA.png">
 
-Let's create a topic to contain the messages. Click on the **Topics** on the left and then **Create a topic**. Our topic will be called **yellow_tripdata** and since we just have a single broker we set the **replication factor** to **1**. We will set the **partitions** number to **10** (I will tell you the reason why later). Finally, we can set the time to retain data to a small number, because we will run the Spark job immediately after the Kafka streaming task, so we do not need to retain the data for a long time in the Kafka topic
+Let's create a topic to contain the messages. Click on the **Topics** on the left and then **Create a topic**. Our topic will be called **yellow_tripdata** and since we just have a single broker we set the **replication factor** to **1**. We will set the **partitions** number to **10** (I will tell you the reason why later). Finally, we can set the time to retain data to a small number
 
+**And please wait a little bit. We will run the Kafka script after running the Spark script.**
 
 ### **```Spark Setup```**
 The goal of the Spark jobs is to consume the streaming data from Kafka topic **yellow_tripdata** and then transfere to the Postgres tables
@@ -253,32 +264,16 @@ The complete code for the Spark jobs is in the `src/spark_streaming.py` file
     def create_sparksession() -> SparkSession:
         spark = SparkSession.builder \
                 .appName("KafkaToPostgres") \
+                .config("spark.sql.shuffle.partitions", "9") \
+                .config("spark.sql.warehouse.dir", "tmp/sql_warehouse") \
+                .config("spark.local.dir", "tmp/local_dir") \
                 .getOrCreate()
         
         return spark
 
 2.  The `read_kafka_stream`function ingests streaming data from the Kafka topic using Spark Structured Streaming.
 ** ** 
-    def read_kafka_stream(spark):
-        """ Reads the streaming data from Kafka """
-
-        try:
-            df_stream = spark.readStream \
-                .format("kafka") \
-                .option("kafka.bootstrap.servers", "kafka:9092") \
-                .option("subscribe", "test_6") \
-                .option("startingOffsets", "earliest") \
-                .load()
-            
-            logging.info("Read stream from Kafka successfully!")
-        except Exception as e:
-            logging.warning(f"Cannot read stream from Kafka due to {e}")
-            raise
-            
-        return df_stream
-
-3. Once the data is ingested, the `create_schema function` processes it, assigns a schema to the incoming JSON data and changes some columns's names.
-** ** 
+    # Apply schema to the data stream
     def create_schema(streaming_df):
         """ Modify the data schema of streaming data """
 
@@ -352,12 +347,60 @@ The complete code for the Spark jobs is in the `src/spark_streaming.py` file
 
 6. The `write_to_postgres` function is responsible for writing data to multiple tables, comprising **6** Spark jobs.
 - The first job writes raw data to the **yellow_tripdata** table
-- The second and thirf identifies trips with abnormal durations and fees and writes them to the **abnormal_duration** and **abnormal_fee** tables
-- The fourth counts trips per hour and stores it in **trip_counts** table
+- The second and third identifies trips with abnormal durations and fees and writes them to the **abnormal_duration** and **abnormal_fee** tables
+- The fourth counts trips per hour and stores it in **trip_count** table
 - The fifth calculates the average revenue per hour and stores it in **avg_revenue**
-- The last one computes the average trip duration per hour and writes to **avg_trip_duration** table
+- The last one computes the trip count by borough and writes to **trip_count_by_borough** table
 
 Now it's time to run the Spark jobs. Are you ready? Great!!!
-- But first we need to download the PostgreSQL JDBC Driver Jar, you can download it [here](https://repo1.maven.org/maven2/org/postgresql/postgresql/42.5.4/postgresql-42.5.4.jar)
+- But first we need the PostgreSQL JDBC Driver Jar to connect to Postgres database, you can download the jar file [here](https://mvnrepository.com/artifact/org.postgresql/postgresql). Choose the version like `42.7.3` and you can see something like `jar (1.0 MB)`. Please download it!
 
-Finally let's run the Spark jobs
+Finally let's run the Spark jobs. We will run Spark master, and a single Spark worker.
+
+We need **4** powershell for this project. 1 for Spark master, 1 for Spark worker, 1 for Kafka streaming task, and 1 for Spark jobs
+
+I will show you how to run on both Window and Linux.
+
+- Let's run Spark master first. Once started, the master prints out a `spark://HOST:PORT` URI. We use this when we start the worker node and submit the Spark jobs. You can find this URI on `localhost:8080`
+** **
+        $SPARK_HOME/bin/spark-class.cmd org.apache.spark.deploy.master.Master
+        $SPARK_HOME/sbin/start-master.sh
+
+- Next, we will start the worker with following command. Please change the **HOST** and **PORT** to yours
+** ** 
+        $SPARK_HOME/bin/spark-class.cmd org.apache.spark.deploy.worker.Worker spark://HOST:PORT
+        $SPARK_HOME/sbin/start-slave.sh spark://HOST:PORT
+
+- Go ahead and run the following command to submit the Spark jobs
+** **
+        $YOUR_PROJECT_DIRECTORY/spark-submit \
+        --master spark://HOST:PORT \
+        --num-executors 1 \
+        --executor-memory 5G \
+        --total-executor-cores 10 \
+        --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.postgresql:postgresql:42.5.4,org apache.kafka:kafka-clients:3.7.0 \
+        --driver-class-path /path-to-your-jar/postgresql-x.x.x.jar \
+        spark_streaming.py
+
+The reason why I only use **1 executor** is because I don't have many CPU and memory resources. If we have multiple executors, the cores and memory would need to be divided, and if the memory is too little, each core wouldn't have enough resources to complete its tasks. Ideally, each partition should have at least **250MB** of memory. In this situation, I need to use what's called a **fat executor**, which means using just 1 executor and allocating all the available cores and memory to it. With 10 cores, each core will have **500MB** of memory, meaning it can handle up to **500MB** of data.
+
+Additionally, the reason I create **10 partitions** when setting up a Kafka topic is so that each of the **10 cores** can handle a separate partition. This helps to improve throughput and fully utilize the parallelism of Kafka and the distributed system of Spark.
+
+
+If there are no errors, you will see something like this on the shell:
+<p align="center">
+    <img width=80% height=80% src="img/imgspark.png" />
+
+The first time you run Spark, it will set up the necessary resources, and you'll see an output similar to the one above. And for the next time, we just see something like below. 
+<p align="center">
+    <img width=80% height=80% src="img/imgspark2.png" />
+
+**After successfully running the Spark jobs, we can run the Kafka script now.**
+** **
+        python src/kafka_stream.py
+
+Now, you can come to Postgres to see the output tables. Try querying 1 table to see the data.
+
+Thank you very much for following along with me. You can inbox me if you have any questions. Hope you have fun when running the project. Thank you!
+
+

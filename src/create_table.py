@@ -41,39 +41,14 @@ def execute_sql(sql_query):
         conn.rollback()
 
 def create_table():
-    # yellow_tripdata = '''
-    #     CREATE TABLE IF NOT EXISTS yellow_tripdata(
-    #         vendor_id TEXT,
-    #         pickup_datetime TEXT,
-    #         dropoff_datetime TEXT,
-    #         store_and_fwd_flag TEXT,
-    #         rate_code_id TEXT,
-    #         pu_location_id TEXT,
-    #         do_location_id TEXT,
-    #         passenger_count TEXT,
-    #         trip_distance TEXT,
-    #         extra TEXT,
-    #         mta_tax TEXT,
-    #         tip_amount TEXT,
-    #         tolls_amount TEXT,
-    #         ehail_fee TEXT,
-    #         improvement_surcharge TEXT,
-    #         total_amount TEXT,
-    #         payment_type TEXT,
-    #         trip_type TEXT,
-    #         congestion_surcharge TEXT
-    #     )
-    # '''
-
-    green_tripdata = '''
-        CREATA TABLE IF NOT EXISTS green_tripdata(
+    yellow_tripdata = '''
+        CREATE TABLE IF NOT EXISTS yellow_tripdata(
             vendor_id TEXT,
             pickup_datetime TEXT,
             dropoff_datetime TEXT,
             passenger_count TEXT,
-            trip_distance TEXT,
-            rate_code_id TEXT,
-            store_and_fwd_flag TEXT,
+            trip_distance TEXT,   
+            ratecode_id TEXT         
             pu_location_id TEXT,
             do_location_id TEXT,
             payment_type TEXT,
@@ -89,9 +64,7 @@ def create_table():
         )
     '''
 
-    # execute_sql(yellow_tripdata)
-    execute_sql(green_tripdata)
-
+    execute_sql(yellow_tripdata)
     cur.close()
     conn.close()
 
