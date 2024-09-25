@@ -20,6 +20,9 @@ Kafka will be configured using Docker, specifically with docker-compose, to run 
 - Configures Spark session with optimized parameters, including custom shuffle partitions and broadcast joins for efficient processing.
 - A dynamic dashboard for monitoring and analyzing trends each day.
 - Efficiently writes large-scale processed streaming data to PostgreSQL in near real-time.
+
+You can visit this [link](https://drive.google.com/file/d/1Tm6IZR8wEuHAIsniyg0NmjtNx_8ZFFJI/view?usp=sharing) to view the dashboard. The video is too big to upload to github
+
 <p align="center">
     <img width=90% height=90% src="dashboard/imgdashboard.png" />
 
@@ -408,4 +411,6 @@ Now, you can access PostgreSQL to view the output tables. Try querying one of th
 Throughout this guide, we’ve thoroughly examined each component of the pipeline, setting up Kafka for data streaming, from processing data with Spark to storing it in PostgreSQL. The incorporation of Docker simplifies the Kaffka setup.
 
 It's important to note that while this setup is ideal for learning and small-scale projects, scaling it for production use would require additional considerations, particularly regarding security and performance optimization. Future enhancements could include integrating advanced data processing techniques,expanding the pipeline to incorporate more complex data sources.
+
+Thank you very much for following along with me. If you have any questions, feel free to inbox me. I hope you enjoy working on the project. Thank you!
 
