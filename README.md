@@ -22,7 +22,7 @@ Kafka will be configured using Docker, specifically with docker-compose, to run 
 - A dynamic dashboard for monitoring and analyzing trends each day.
 - Efficiently writes large-scale processed streaming data to PostgreSQL in near real-time.
 
-You can download the video to see the dashboad. Or you can visit this [link](https://drive.google.com/file/d/1Tm6IZR8wEuHAIsniyg0NmjtNx_8ZFFJI/view?usp=sharing) to view it.
+You can download the video in `dashboard/` folder to see the dashboad. Or you can visit this [link](https://drive.google.com/file/d/1Tm6IZR8wEuHAIsniyg0NmjtNx_8ZFFJI/view?usp=sharing) to view it.
 
 <p align="center">
     <img width=90% height=90% src="dashboard/imgdashboard.png" />
