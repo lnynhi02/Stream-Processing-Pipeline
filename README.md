@@ -28,10 +28,10 @@ You can download the video in `dashboard/` folder to see the dashboad. Or you ca
     <img width=90% height=90% src="dashboard/imgdashboard.png" />
 
 ## 📕  Table Of Contents
-* [⚙️ Local Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#%EF%B8%8F-local-setup)
-* [💻 Deployment](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#-deployment)
-    - [Postgres Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#postgres-setup)
-    - [Kafka Setup](https://github.com/LNYN-1508/Data-Pipeline-Project/blob/main/README.md#kafka-streaming)
+* [⚙️ Local Setup](https://github.com/lnynhi02/Data-Pipeline-Project/blob/main/README.md#%EF%B8%8F-local-setup)
+* [💻 Deployment](https://github.com/lnynhi02/Data-Pipeline-Project/blob/main/README.md#-deployment)
+    - [Postgres Setup](https://github.com/lnynhi02/Data-Pipeline-Project/blob/main/README.md#postgres-setup)
+    - [Kafka Setup](https://github.com/lnynhi02/Data-Pipeline-Project/blob/main/README.md#kafka-streaming)
     - [Spark Setup](#spark-setup)
 * [Summary](#summary)
 
