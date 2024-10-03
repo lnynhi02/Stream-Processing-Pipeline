@@ -32,7 +32,6 @@ cur = conn.cursor()
 def execute_sql(sql_query):
     try:
         cur.execute(sql_query)
-        cur.execute(sql_query)
         conn.commit()
         print("Create table sucessfully")
         
