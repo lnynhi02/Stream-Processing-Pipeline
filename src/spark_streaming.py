@@ -28,7 +28,7 @@ def create_sparksession() -> SparkSession:
     return spark
 
 def read_kafka_stream(spark):
-    """ Reads the streaming data from Kafka """
+    """ Read the streaming data from Kafka """
 
     kafka_host = config['kafka']['host']
     kafka_port = config['kafka']['port']
