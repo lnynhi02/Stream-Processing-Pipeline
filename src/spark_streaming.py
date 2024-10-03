@@ -92,6 +92,7 @@ def create_schema(streaming_df):
 
     return df_stream
 
+# Select just the necessary columns for better performances
 def select_columns(df_stream):
     streaming_main = df_stream.select(
         to_timestamp(col("pickup_datetime")).alias("pickup_datetime"),
@@ -119,6 +120,8 @@ def foreach_batch_function(df, epoch_id, table_name):
     df.write.jdbc(jdbc_url, table_name, mode="append", properties=connection_properties)
 
 def write_raw_data(streaming_raw):
+    ''' Write raw data to Postgres '''
+    
     query = streaming_raw \
         .drop("store_and_fwd_flag") \
         .withColumn("pickup_datetime", to_timestamp("pickup_datetime")) \
@@ -132,6 +135,8 @@ def write_raw_data(streaming_raw):
     return query
 
 def detetect_abnormal_duration(streaming_extra):
+    ''' Detect the trips with abnormal duration (e.g., duration less than 1) '''
+    
     abnormal_duration = streaming_extra \
         .withColumn("pickup_datetime", to_timestamp("pickup_datetime")) \
         .withColumn("dropoff_datetime", to_timestamp("dropoff_datetime")) \
@@ -158,6 +163,8 @@ def detetect_abnormal_duration(streaming_extra):
     return query
 
 def detect_abnormal_fee(streaming_extra):
+    ''' Detect trips with abnormal fees (e.g., trips where the total_amount does not equal the sum of all fees) '''
+    
     abnormal_fee = streaming_extra \
         .withColumn("pickup_datetime", to_timestamp("pickup_datetime")) \
         .withColumn("dropoff_datetime", to_timestamp("dropoff_datetime")) \
@@ -188,6 +195,8 @@ def detect_abnormal_fee(streaming_extra):
     return query
 
 def avg_revenue_per_hour(streaming_main):
+    ''' Caculate the average revenue per hour '''
+    
     avg_revenue_per_hour = streaming_main \
         .filter(col("total_amount").isNotNull()) \
         .withWatermark("pickup_datetime", "60 minutes") \
@@ -217,6 +226,8 @@ def avg_revenue_per_hour(streaming_main):
     return query
 
 def trip_count_per_hour(streaming_main):
+    ''' Calculate the number of trips per hour '''
+    
     trip_count_per_hour = streaming_main \
         .withWatermark("pickup_datetime", "60 minutes") \
         .groupBy(window(col("pickup_datetime"), "60 minutes")) \
@@ -245,6 +256,8 @@ def trip_count_per_hour(streaming_main):
     return query
 
 def caculate_trip_count_per_zone(spark, streaming_extra):
+    ''' Determine the hourly number of trips per zone '''
+    
     taxi_zone_lookup_path = os.path.join(os.path.dirname(__file__), "data", "taxi_zone_lookup.csv")
 
     lookup_df = spark.read.csv(taxi_zone_lookup_path, header=True, inferSchema=True)
@@ -285,6 +298,8 @@ def caculate_trip_count_per_zone(spark, streaming_extra):
     return query
 
 def write_to_postgres(spark, streaming_raw, streaming_main, streaming_extra):
+    ''' Write all computed results in Postgres '''
+    
     raw_data_stream = write_raw_data(streaming_raw)
     abnormal_duration = detetect_abnormal_duration(streaming_extra)
     abnormal_fee = detect_abnormal_fee(streaming_extra)
