@@ -10,7 +10,7 @@ from itertools import islice
 logging.basicConfig(level=logging.INFO)
 
 config = configparser.ConfigParser()
-config_path = os.path.join(os.path.dirname(__file__), "config", "config.ini")
+config_path = os.path.join(os.path.dirname(__file__), "..", "config", "config.ini")
 config.read(config_path)
 
 class KafkaProducerManager:
