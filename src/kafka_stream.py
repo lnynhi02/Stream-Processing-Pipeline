@@ -14,7 +14,7 @@ config_path = os.path.join(os.path.dirname(__file__), "..", "config", "config.in
 config.read(config_path)
 
 class KafkaProducerManager:
-    INDEX_FILE = os.path.join(os.path.dirname(__file__), "data", "index.txt")
+    INDEX_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "index.txt")
     CONFIG = {
         "batch_size": 32768,
         "linger_ms": 50,
