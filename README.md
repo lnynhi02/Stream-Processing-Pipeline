@@ -115,7 +115,7 @@ The company has shared with you 3 key datasets for this data.
 
 1. You can clone, fork, or download this GitHub repository on your local machine using the following command:
 ** **
-        git clone https://github.com/LNYN-1508/Data-Pipeline-Project-1.git
+        git clone https://github.com/lnynhi02/Data-Pipeline-Project.git
 
 **Here is the overall structure of the project:**
 ** ** 
