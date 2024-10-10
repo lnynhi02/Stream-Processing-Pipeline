@@ -159,7 +159,12 @@ The company has shared with you 3 key datasets for this data.
     database=enter_your_db
 
 - The `data` directory contains `yellow_tripdata_2024.csv`, `taxi_zone_lookup.csv`, and the `shapefile` needed for the project. I'll explain the `index.txt` file later.
-- The `tmp` directory holds the checkpoint locations for Spark jobs, which are essential for resuming Spark applications. It also includes `local_dir` and `sql_warehouse` for cleanup after running jobs. 
+- The `tmp` directory holds the checkpoint locations for Spark jobs, which are essential for resuming Spark applications. It also includes `local_dir` and `sql_warehouse` for cleanup after running jobs. You can run the following command to create these folders.
+** **
+        PS: New-Item -ItemType Directory -Path tmp, tmp\sql_warehouse, tmp\local_dir, tmp\checkpoint\abnormal_duration, tmp\checkpoint\abnormal_fee, tmp\checkpoint\avg_duration, tmp\checkpoint\avg_revenue, tmp\checkpoint\raw_data, tmp\checkpoint\trip_count
+        Linux: mkdir -p tmp/sql_warehouse tmp/local_dir tmp/checkpoint/abnormal_duration tmp/checkpoint/abnormal_fee tmp/checkpoint/avg_duration tmp/checkpoint/avg_revenue tmp/checkpoint/raw_data tmp/checkpoint/trip_count
+
+
 - The `src` directory has all the Python scripts: `create_table.py` for creating PostgreSQL tables, `kafka_stream.py` for sending data to Kafka, and `spark_streaming.py` for running Spark jobs.
 - The `docker-compose.yaml` file configures Kafka services.
 
