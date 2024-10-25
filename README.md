@@ -111,7 +111,8 @@ The company has shared with you 3 key datasets for this data.
 - Install [Python](https://www.python.org/)
 - Install [PostgreSQL](https://www.postgresql.org/download/)
 
-**Attention: Apache Spark is only compatible with Java 8, Java 11, or Java 17.**
+> [!CAUTION]
+> **Attention: Apache Spark is only compatible with Java 8, Java 11, or Java 17.**
 
 1. You can clone, fork, or download this GitHub repository on your local machine using the following command:
 ** **
