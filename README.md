@@ -265,7 +265,8 @@ After the services start, visit the kafka-ui at http://localhost:8800/. Normally
 
 Let's create a topic to contain the messages. Click on the **Topics** on the left and then **Create a topic**. Our topic will be called **yellow_tripdata** and since we just have a single broker we set the **replication factor** to **1**. We will set the **partitions** number to **10** (I will tell you the reason why later). Finally, we can set the time to retain data to a small number.
 
-**And please wait a little bit. We will run the Kafka script after running the Spark script.**
+> [!NOTE]
+> **And please wait a little bit. We will run the Kafka script after running the Spark script.**
 
 ### **```Spark Setup```**
 The goal of the Spark jobs is to consume the streaming data from Kafka topic **yellow_tripdata** and then transfere to the Postgres tables
