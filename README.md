@@ -211,7 +211,7 @@ For example, if the latest streaming task has sent 1000 messages. This number, 1
 
 The file is saved in `/data/index.txt` and by default, the file is empty which means that our first streaming task will process the first message also at index 0.
 
-**!!Note** that in a production setting, this approach of writing the number of the last processed message and storing it in a local file is not practical and not advisable. There are many other methods available to achieve this more effectively.
+***Note that in a production setting, this approach of writing the number of the last processed message and storing it in a local file is not practical and not advisable. There are many other methods available to achieve this more effectively.***
 
 The code for Kafka streaming task can be found on `src/kafak_stream.py` and it primarily involves extracting data from a CSV file, serving the data to a Kafka topic using a Kafka producer, and updating the numbers in `index.txt`.
 
