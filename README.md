@@ -151,34 +151,6 @@ The company has shared with you 3 key datasets for this data.
 
 
 - The ``config`` directory contains a ``config.ini`` file that includes the configuration of your PostgreSQL database and ``requirements.txt`` includes all the essential packages 
-** **
-    [database]
-    host=localhost
-    port=5432
-    user=postgres
-    password=enter_your_pwd
-    database=enter_your_db
-
-- The `data` directory contains `yellow_tripdata_2024.csv`, `taxi_zone_lookup.csv`, and the `shapefile` needed for the project. I'll explain the `index.txt` file later.
-- The `tmp` directory holds the checkpoint locations for Spark jobs, which are essential for resuming Spark applications. It also includes `local_dir` and `sql_warehouse` for cleanup after running jobs. You can run the following command to create these folders.
-** **
-        PS: New-Item -ItemType Directory -Path tmp, tmp\sql_warehouse, tmp\local_dir, tmp\checkpoint\abnormal_duration, tmp\checkpoint\abnormal_fee, tmp\checkpoint\avg_duration, tmp\checkpoint\avg_revenue, tmp\checkpoint\raw_data, tmp\checkpoint\trip_count
-        Linux: mkdir -p tmp/sql_warehouse tmp/local_dir tmp/checkpoint/abnormal_duration tmp/checkpoint/abnormal_fee tmp/checkpoint/avg_duration tmp/checkpoint/avg_revenue tmp/checkpoint/raw_data tmp/checkpoint/trip_count
-
-
-- The `src` directory has all the Python scripts: `create_table.py` for creating PostgreSQL tables, `kafka_stream.py` for sending data to Kafka, and `spark_streaming.py` for running Spark jobs.
-- The `docker-compose.yaml` file configures Kafka services.
-
-To set up your local development environment, start by creating a virtualenv environment, and installing the packages listed in `requirements.txt`
-1. Create a virtualenv environment
-`` python -m venv venv ``
-2. Activate the venv environment 
-- Window Powershell: `` venv/Scripts/Activate ``
-- Linux: `` source venv/bin/activate `` 
-3. Run `` pip install -r requirements.txt ``
-
-And now you are good to go!!
-
 
 ## 💻 Deployment
 ### **```Postgres Setup```**
@@ -194,23 +166,9 @@ You can run the Python script with the following command:
 ** ** 
         python src/create_table.py
 
-I use `config.ini` to access the database configurations, allowing you to modify the application settings easily. Alternatively, if you prefer to use a different method, you can make slight adjustments to the script accordingly. The `config.ini` file looks as follow:
-** **
-    [database]
-    host=localhost #if you run Postgres in Docker, you need to use the Docker host
-    port=5432
-    user=postgres
-    password=enter_your_pwd
-    database=enter_your_db
-
-
 ### **```Kafka Setup```**
 To avoid resending messages that have already been processed each time we run the streaming task, we define an `index.txt` file that records the number of messages sent in the latest streaming session. We use this number as the starting index for our new streaming task.
-
-For example, if the latest streaming task has sent 1000 messages. This number, 1000, is also used as the starting index for the next streaming task because, although we sent 1000 messages, indexing starts from 0 in CSV file, which means the last message sent is at index 999. 
-
-The file is saved in `/data/index.txt` and by default, the file is empty which means that our first streaming task will process the first message also at index 0.
-
+ 
 ***Note that in a production setting, this approach of writing the number of the last processed message and storing it in a local file is not practical and not advisable. There are many other methods available to achieve this more effectively.***
 
 The code for Kafka streaming task can be found on `src/kafak_stream.py` and it primarily involves extracting data from a CSV file, serving the data to a Kafka topic using a Kafka producer, and updating the numbers in `index.txt`.
