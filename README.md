@@ -349,10 +349,6 @@ I will show you how to run on both Window and Linux.
         --driver-class-path /path-to-your-jar/postgresql-x.x.x.jar \
         spark_streaming.py
 
-> [!NOTE]
-> The reason why I only use **1 executor** is because I don't have many CPU and memory resources. If we have multiple executors, the cores and memory would need to be divided, and if the memory is too little, each core wouldn't have enough resources to complete its tasks. Ideally, each partition should have at least **250MB** of memory. In this situation, I need to use what's called a **fat executor**, which means using just 1 executor and allocating all the available cores and memory to it. With 10 cores, each core will have **500MB** of memory, meaning it can handle up to **500MB** of data. </br>
-> Additionally, the reason I create **10 partitions** when setting up a Kafka topic is so that each of the **10 cores** can handle a separate partition. This helps to improve throughput and fully utilize the parallelism of Kafka and the distributed system of Spark.
-
 
 If there are no errors, you will see something like this on the shell:
 <p align="center">
