@@ -5,12 +5,7 @@ This reference architecture shows an **end-to-end real-time analytics pipeline**
 
 
 ## Overview
-Let's break down the data pipeline process step-by-step:
-1. **Data Streaming**: Initially, data is streamed from the file into a Kafka topic
-2. **Data Processing**: A Spark job then takes over, consuming the data from the Kafka topic, transforming, analyzing and transferring it to a PostgreSQL database
-3. **Data Visualizing**: A dynamic dashboard for real-time and day-to-day analysis has been built using Power BI.
-
-Kafka will be configured using Docker, specifically with docker-compose, to run alongside the Kafka UI service, which provides a user interface for easier visualization and monitoring.
+The following is the structure of the data pipeline:
 
 <p align="center">
     <img width=80% height=80% src="img/pipeline.gif" />
