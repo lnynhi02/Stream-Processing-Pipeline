@@ -1,22 +1,29 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import StructField, StructType, StringType
+from utils import send_email
 import configparser
 import logging
-import os
 
-logging.basicConfig(level=logging.INFO)
+# === Logging setup ===
+logging.basicConfig(
+    filename='logs.log',
+    level=logging.WARNING,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
+# === ConfigParser ===
 config = configparser.ConfigParser()
-config_path = os.path.join(os.path.dirname(__file__), "..", "config", "config.ini")
+config_path = "config/config.ini"
 config.read(config_path)
 
-
+# === DB Info from config ===
 DB_NAME = config['database']['database']
 PWD = config['database']['password']
 USER = config['database']['user']
 HOST = config['database']['host']
 
+# === SparkSession setup ===
 def create_sparksession() -> SparkSession:
     spark = SparkSession.builder \
             .appName("KafkaToPostgres") \
@@ -24,12 +31,11 @@ def create_sparksession() -> SparkSession:
             .config("spark.sql.warehouse.dir", "tmp/sql_warehouse") \
             .config("spark.local.dir", "tmp/local_dir") \
             .getOrCreate()
-    
+
     return spark
 
+# === Read data from Kafka ===
 def read_kafka_stream(spark):
-    """ Read the streaming data from Kafka """
-
     kafka_host = config['kafka']['host']
     kafka_port = config['kafka']['port']
     kafka_topic = config['kafka']['topic']
@@ -42,18 +48,15 @@ def read_kafka_stream(spark):
             .option("subscribe", kafka_topic) \
             .option("startingOffsets", "earliest") \
             .load()
-        
         logging.info("Read stream from Kafka successfully!")
     except Exception as e:
-        logging.warning(f"Cannot read stream from Kafka due to {e}")
+        logging.error(f"Cannot read stream from Kafka due to {e}")
         raise
-        
+
     return df_stream
 
-# Apply schema to the data stream
+# === Apply schema ===
 def create_schema(streaming_df):
-    """ Modify the data schema of streaming data """
-
     schema = StructType([
         StructField('VendorID', StringType(), True),
         StructField('tpep_pickup_datetime', StringType(), True),
@@ -76,40 +79,41 @@ def create_schema(streaming_df):
         StructField('Airport_fee', StringType(), True)
     ])
 
-
-    df = streaming_df.selectExpr("CAST(value AS String)")\
+    df_raw = streaming_df.selectExpr("CAST(value AS STRING)") \
         .select(from_json(col('value'), schema).alias('data')) \
         .select('data.*')
     
-    df_stream = df \
-            .withColumnRenamed('VendorID', 'vendor_id') \
-            .withColumnRenamed('tpep_pickup_datetime', 'pickup_datetime') \
-            .withColumnRenamed('tpep_dropoff_datetime', 'dropoff_datetime') \
-            .withColumnRenamed('RatecodeID', 'ratecode_id') \
-            .withColumnRenamed('PULocationID', 'pu_location_id') \
-            .withColumnRenamed('DOLocationID', 'do_location_id') \
-            .withColumnRenamed('Airport_fee', 'airport_fee') \
+    df_raw.printSchema()
 
-    return df_stream
+    return df_raw
 
-# Select just the necessary columns for better performances
-def select_columns(df_stream):
-    streaming_main = df_stream.select(
-        to_timestamp(col("pickup_datetime")).alias("pickup_datetime"),
-        to_timestamp(col("dropoff_datetime")).alias("dropoff_datetime"),
-        col("total_amount").cast("double").alias("total_amount"),
-        col("payment_type").cast("int").alias("payment_type")
+# === Change column types ===
+def column_types(df_stream):
+    df = df_stream.select(
+        when(col("VendorID") == "", None).otherwise(col("VendorID").cast("int")).alias("vendor_id"),
+        when(col("tpep_pickup_datetime") == "", None).otherwise(to_timestamp(col("tpep_pickup_datetime"))).alias("pickup_datetime"),
+        when(col("tpep_dropoff_datetime") == "", None).otherwise(to_timestamp(col("tpep_dropoff_datetime"))).alias("dropoff_datetime"),
+        when(col("passenger_count") == "", None).otherwise(col("passenger_count").cast("int")).alias("passenger_count"),
+        when(col("trip_distance") == "", None).otherwise(col("trip_distance").cast("double")).alias("trip_distance"),
+        when(col("RatecodeID") == "", None).otherwise(col("RatecodeID").cast("int")).alias("ratecode_id"),
+        when(col("PULocationID") == "", None).otherwise(col("PULocationID").cast("int")).alias("pu_location_id"),
+        when(col("DOLocationID") == "", None).otherwise(col("DOLocationID").cast("int")).alias("do_location_id"),
+        when(col("payment_type") == "", None).otherwise(col("payment_type").cast("int")).alias("payment_type"),
+        when(col("fare_amount") == "", None).otherwise(col("fare_amount").cast("double")).alias("fare_amount"),
+        when(col("extra") == "", None).otherwise(col("extra").cast("double")).alias("extra"),
+        when(col("mta_tax") == "", None).otherwise(col("mta_tax").cast("double")).alias("mta_tax"),
+        when(col("tip_amount") == "", None).otherwise(col("tip_amount").cast("double")).alias("tip_amount"),
+        when(col("tolls_amount") == "", None).otherwise(col("tolls_amount").cast("double")).alias("tolls_amount"),
+        when(col("improvement_surcharge") == "", None).otherwise(col("improvement_surcharge").cast("double")).alias("improvement_surcharge"),
+        when(col("total_amount") == "", None).otherwise(col("total_amount").cast("double")).alias("total_amount"),
+        when(col("congestion_surcharge") == "", None).otherwise(col("congestion_surcharge").cast("double")).alias("congestion_surcharge"),
+        when(col("Airport_fee") == "", None).otherwise(col("Airport_fee").cast("double")).alias("airport_fee")
     )
+    df.printSchema()
 
-    streaming_extra = df_stream.select(
-    "pickup_datetime", "dropoff_datetime", "total_amount", "payment_type",
-    "pu_location_id", "do_location_id", "fare_amount", "extra", "mta_tax", 
-    "tip_amount", "tolls_amount", "improvement_surcharge", "airport_fee"
-    )
+    return df
 
-    return streaming_main, streaming_extra
-    
-def foreach_batch_function(df, epoch_id, table_name):
+def foreach_batch_jdbc_writer(df, epoch_id, table_name):
     jdbc_url = f"jdbc:postgresql://{HOST}:5432/{DB_NAME}"
     connection_properties = {
         "user": f"{USER}",
@@ -119,85 +123,124 @@ def foreach_batch_function(df, epoch_id, table_name):
 
     df.write.jdbc(jdbc_url, table_name, mode="append", properties=connection_properties)
 
-def write_raw_data(streaming_raw):
-    ''' Write raw data to Postgres '''
-    
-    query = streaming_raw \
+# === Write full table to PostgreSQL  ===
+def write_full_table(df_parsed):
+    query = df_parsed \
         .drop("store_and_fwd_flag") \
         .withColumn("pickup_datetime", to_timestamp("pickup_datetime")) \
         .withColumn("dropoff_datetime", to_timestamp("dropoff_datetime")) \
         .writeStream \
-        .foreachBatch(lambda df, epoch_id: foreach_batch_function(df, epoch_id, "yellow_tripdata")) \
+        .foreachBatch(lambda df, epoch_id: foreach_batch_jdbc_writer(df, epoch_id, "yellow_tripdata")) \
         .outputMode("append") \
-        .option("checkpointLocation", "tmp/checkpoint/raw_data") \
+        .option("checkpointLocation", "tmp/checkpoint/full_table_data") \
         .start()
     
     return query
 
-def detetect_abnormal_duration(streaming_extra):
-    ''' Detect the trips with abnormal duration (e.g., duration less than 1) '''
-    
-    abnormal_duration = streaming_extra \
-        .withColumn("pickup_datetime", to_timestamp("pickup_datetime")) \
-        .withColumn("dropoff_datetime", to_timestamp("dropoff_datetime")) \
-        .withColumn(
-            "trip_duration_minutes", 
-            (col("dropoff_datetime").cast("long") - col("pickup_datetime").cast("long")) / 60
-        ) \
-        .filter((col("trip_duration_minutes") < 1) | (col("trip_duration_minutes") > 120)) \
-        .selectExpr(
-            "pickup_datetime", 
-            "dropoff_datetime", 
-            "pu_location_id", 
-            "do_location_id", 
-            "round(trip_duration_minutes, 2) AS trip_duration_minutes"
-        )
-    
-    query = abnormal_duration \
+# === Select just necessary columns for better performance  ===
+def select_column(df_parsed):
+    df_main = df_parsed.select(
+        "pickup_datetime", "dropoff_datetime", "total_amount", "payment_type"
+    )
+
+    df_extra = df_parsed.select(
+        "pickup_datetime", "dropoff_datetime", "total_amount", "payment_type",
+        "pu_location_id", "do_location_id", "fare_amount", "extra", "mta_tax", 
+        "tip_amount", "tolls_amount", "improvement_surcharge", "airport_fee"
+    )
+
+    return df_main, df_extra
+
+# === Detect trips with abnormal duration (e.g., duration less than 1) ===
+def detect_abnormal_duration(df_extra):
+    def process_abnormal_duration(batch_df, epoch_id):
+        abnormal_duration = batch_df \
+            .withColumn(
+                "trip_duration_minutes", 
+                (col("dropoff_datetime").cast("long") - col("pickup_datetime").cast("long")) / 60
+            ) \
+            .filter((col("trip_duration_minutes") < 1) | (col("trip_duration_minutes") > 120)) \
+            .selectExpr(
+                "pickup_datetime", 
+                "dropoff_datetime", 
+                "pu_location_id", 
+                "do_location_id", 
+                "round(trip_duration_minutes, 2) AS trip_duration_minutes"
+            )
+
+        # === Adding alert ===
+        abnormal_duration_count = abnormal_duration.count()
+        if abnormal_duration_count > 0:
+            alert_message = f"⚠️ {abnormal_duration_count} trips with abnormal duration detected."
+
+            send_email(
+                subject="Alert: Abnormal Trip Duration Detected",
+                body=alert_message,
+                to_email=config["email"]["to_email"]
+            )
+
+            logging.warning(alert_message)
+
+        foreach_batch_jdbc_writer(abnormal_duration, epoch_id, "abnormal_duration")
+
+    query = df_extra \
         .writeStream \
-        .foreachBatch(lambda df, epoch_id: foreach_batch_function(df, epoch_id, "abnormal_duration")) \
+        .foreachBatch(process_abnormal_duration) \
         .outputMode("append") \
         .option("checkpointLocation", "tmp/checkpoint/abnormal_duration") \
         .start()
-    
+
     return query
 
-def detect_abnormal_fee(streaming_extra):
-    ''' Detect trips with abnormal fees (e.g., trips where the total_amount does not equal the sum of all fees) '''
+# === Detect trips with abnormal fee ===
+def detect_abnormal_fee(df_extra):
+    def process_abnormal_fee(batch_df, epoch_id):
+        abnormal_fee = batch_df \
+            .withColumn("caculated_total_amount", 
+                        col("fare_amount") +
+                        col("extra") +
+                        col("mta_tax") +
+                        col("tip_amount") +
+                        col("tolls_amount") +
+                        col("improvement_surcharge") +
+                        col("airport_fee")) \
+            .filter((abs(col("total_amount") - col("caculated_total_amount")) > 1) | (col("total_amount").isNull())) \
+            .selectExpr(
+                "pickup_datetime", 
+                "dropoff_datetime", 
+                "pu_location_id", 
+                "do_location_id", 
+                "round(abs(total_amount - caculated_total_amount), 2) AS amount_discrepancy"
+            )
+        
+        # === Adding alert ===
+        abnormal_fee_count = abnormal_fee.count()
+        if abnormal_fee_count > 0:
+            alert_message = f"⚠️ {abnormal_fee_count} trips with abnormal fee detected."
+
+            send_email(
+                subject="Alert: Abnormal Trip Fee Detected",
+                body=alert_message,
+                to_email=config["email"]["to_email"]
+            )
+
+            logging.warning(alert_message)
+
+        foreach_batch_jdbc_writer(abnormal_fee, epoch_id, "abnormal_fee")
+
     
-    abnormal_fee = streaming_extra \
-        .withColumn("pickup_datetime", to_timestamp("pickup_datetime")) \
-        .withColumn("dropoff_datetime", to_timestamp("dropoff_datetime")) \
-        .withColumn("caculated_total_amount", 
-                    col("fare_amount").cast("double") +
-                    col("extra").cast("double") +
-                    col("mta_tax").cast("double") +
-                    col("tip_amount").cast("double") +
-                    col("tolls_amount").cast("double") +
-                    col("improvement_surcharge").cast("double") +
-                    col("airport_fee").cast("double")) \
-        .filter((abs(col("total_amount") - col("caculated_total_amount")) > 1) | (col("total_amount").isNull())) \
-        .selectExpr(
-            "pickup_datetime", 
-            "dropoff_datetime", 
-            "pu_location_id", 
-            "do_location_id", 
-            "round(abs(total_amount - caculated_total_amount), 2) AS amount_discrepancy"
-        )
-    
-    query = abnormal_fee \
+    query = df_extra \
         .writeStream \
-        .foreachBatch(lambda df, epoch_id: foreach_batch_function(df, epoch_id, "abnormal_fee")) \
+        .foreachBatch(process_abnormal_fee) \
         .outputMode("append") \
         .option("checkpointLocation", "tmp/checkpoint/abnormal_fee") \
         .start()
     
     return query
 
-def avg_revenue_per_hour(streaming_main):
-    ''' Caculate the average revenue per hour '''
-    
-    avg_revenue_per_hour = streaming_main \
+# === Average revenue per hour ===
+def avg_revenue_per_hour(df_main):    
+    avg_revenue_per_hour = df_main \
         .filter(col("total_amount").isNotNull()) \
         .withWatermark("pickup_datetime", "60 minutes") \
         .groupBy(window(col("pickup_datetime"), "60 minutes")) \
@@ -218,17 +261,16 @@ def avg_revenue_per_hour(streaming_main):
     
     query = avg_revenue_per_hour \
         .writeStream \
-        .foreachBatch(lambda df, epoch_id: foreach_batch_function(df, epoch_id, "avg_revenue_per_hour")) \
+        .foreachBatch(lambda df, epoch_id: foreach_batch_jdbc_writer(df, epoch_id, "avg_revenue_per_hour")) \
         .outputMode("append") \
         .option("checkpointLocation", "tmp/checkpoint/avg_revenue") \
         .start()
     
     return query
 
-def trip_count_per_hour(streaming_main):
-    ''' Calculate the number of trips per hour '''
-    
-    trip_count_per_hour = streaming_main \
+# === Count trips per hour  ===
+def trip_count_per_hour(df_main):    
+    trip_count_per_hour = df_main \
         .withWatermark("pickup_datetime", "60 minutes") \
         .groupBy(window(col("pickup_datetime"), "60 minutes")) \
         .agg(
@@ -248,31 +290,28 @@ def trip_count_per_hour(streaming_main):
 
     query = trip_count_per_hour \
         .writeStream \
-        .foreachBatch(lambda df, epoch_id: foreach_batch_function(df, epoch_id, "trip_count_per_hour")) \
+        .foreachBatch(lambda df, epoch_id: foreach_batch_jdbc_writer(df, epoch_id, "trip_count_per_hour")) \
         .outputMode("append") \
         .option("checkpointLocation", "tmp/checkpoint/trip_count") \
         .start()
     
     return query
 
-def caculate_trip_count_per_zone(spark, streaming_extra):
-    ''' Determine the hourly number of trips per zone '''
-    
-    taxi_zone_lookup_path = os.path.join(os.path.dirname(__file__), "data", "taxi_zone_lookup.csv")
+# === Count hourly trips per zone ===
+def caculate_trip_count_per_zone(spark, df_extra):
+    taxi_zone_lookup_path = ("data/taxi_zone_lookup.csv")
 
     lookup_df = spark.read.csv(taxi_zone_lookup_path, header=True, inferSchema=True)
-    streaming_extra = streaming_extra \
-    .selectExpr(
-        "CAST(pickup_datetime AS timestamp) AS pickup_datetime",
-        "CAST(dropoff_datetime AS timestamp) AS dropoff_datetime",
-        "CAST(pu_location_id AS int) AS pu_location_id"
+    df_extra = df_extra \
+    .select(
+        "pickup_datetime", "dropoff_datetime", "pu_location_id"
     )
 
-    streaming_extra_with_location = streaming_extra \
-        .join(broadcast(lookup_df), streaming_extra.pu_location_id == lookup_df.LocationID, "left") \
-        .select(streaming_extra["*"], lookup_df["LocationID"], lookup_df["Borough"])
+    df_extra_with_location = df_extra \
+        .join(broadcast(lookup_df), df_extra.pu_location_id == lookup_df.LocationID, "left") \
+        .select(df_extra["*"], lookup_df["LocationID"], lookup_df["Borough"])
 
-    trip_count_per_borough = streaming_extra_with_location \
+    trip_count_per_borough = df_extra_with_location \
         .withWatermark("pickup_datetime", "60 minutes") \
         .groupBy(
             window(col("pickup_datetime"), "60 minutes"),
@@ -291,33 +330,34 @@ def caculate_trip_count_per_zone(spark, streaming_extra):
     query = trip_count_per_borough \
         .writeStream \
         .outputMode("append") \
-        .foreachBatch(lambda df, epoch_id: foreach_batch_function(df, epoch_id, "trip_count_by_borough")) \
+        .foreachBatch(lambda df, epoch_id: foreach_batch_jdbc_writer(df, epoch_id, "trip_count_by_borough")) \
         .option("checkpointLocation", "tmp/checkpoint/trip_count_by_borough") \
         .start()
 
     return query
 
-def write_to_postgres(spark, streaming_raw, streaming_main, streaming_extra):
-    ''' Write all computed results in Postgres '''
+# === Main workflow ===
+def main():
+    spark = create_sparksession()
     
-    raw_data_stream = write_raw_data(streaming_raw)
-    abnormal_duration = detetect_abnormal_duration(streaming_extra)
-    abnormal_fee = detect_abnormal_fee(streaming_extra)
-    trip_count_stream = trip_count_per_hour(streaming_main)
-    avg_revenue_stream = avg_revenue_per_hour(streaming_main)
-    trip_count_per_zone = caculate_trip_count_per_zone(spark, streaming_extra)
+    kafka_df = read_kafka_stream(spark)
+    raw_df = create_schema(kafka_df)
+    parsed_df = column_types(raw_df)
+    df_main, df_extra = select_column(parsed_df)
+    
+    full_data_to_postgres = write_full_table(parsed_df)
+    abnormal_duration = detect_abnormal_duration(df_extra)
+    abnormal_fee = detect_abnormal_fee(df_extra)
+    avg_revenue_hourly = avg_revenue_per_hour(df_main)
+    trip_hourly = trip_count_per_hour(df_main)
+    trip_per_zone_hourly = caculate_trip_count_per_zone(spark, df_extra)
 
-    raw_data_stream.awaitTermination()
+    full_data_to_postgres.awaitTermination()
     abnormal_duration.awaitTermination()
     abnormal_fee.awaitTermination()
-    trip_count_stream.awaitTermination()
-    avg_revenue_stream.awaitTermination()
-    trip_count_per_zone.awaitTermination()
-                          
+    avg_revenue_hourly.awaitTermination()
+    trip_hourly.awaitTermination()
+    trip_per_zone_hourly.awaitTermination()
 
 if __name__ == '__main__':
-    spark = create_sparksession()
-    df_initial = read_kafka_stream(spark)
-    df_raw = create_schema(df_initial)
-    df_main, df_extra = select_columns(df_raw)
-    write_to_postgres(spark, df_raw, df_main, df_extra)
+    main()
