@@ -2,7 +2,7 @@
 
 - Clone this repository:
 ```bash
-git clone https://github.com/lnynhi02/coffee-sales-data-pipeline.git
+git clone https://github.com/lnynhi02/Stream-Processing-Pipeline.git
 ```
 - For a step-by-step deployment guide, visit <a href='https://lnynhi02.github.io/stream-processing-pipeline-docs/' target='_blank'>this link</a>.
 
